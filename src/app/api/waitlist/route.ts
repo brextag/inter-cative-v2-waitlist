@@ -12,24 +12,41 @@ export async function POST(req: NextRequest) {
     const parsed = schema.safeParse(body);
     if (!parsed.success) {
       return NextResponse.json(
-        { success: false, message: parsed.error.errors[0]?.message || "Invalid email" },
+        {
+          success: false,
+          message: parsed.error.errors[0]?.message || "Invalid email",
+        },
         { status: 400 }
       );
     }
     const result = addToWaitlist(parsed.data.email);
-    return NextResponse.json(result, { status: result.success ? 200 : 409 });
+    return NextResponse.json(result, {
+      status: result.success ? 200 : result.message.includes("already") ? 409 : 500,
+    });
   } catch (e) {
-    console.error(e);
-    return NextResponse.json({ success: false, message: "Something went wrong" }, { status: 500 });
+    console.error("POST /api/waitlist:", e);
+    return NextResponse.json(
+      { success: false, message: "Something went wrong. Please try again." },
+      { status: 500 }
+    );
   }
 }
 
 export async function GET() {
-  const list = getWaitlist();
-  const settings = getSettings();
-  return NextResponse.json({
-    count: list.length,
-    dropDate: settings.dropDate,
-    productName: settings.productName,
-  });
+  try {
+    const list = getWaitlist();
+    const settings = getSettings();
+    return NextResponse.json({
+      count: list.length,
+      dropDate: settings.dropDate,
+      productName: settings.productName,
+    });
+  } catch (e) {
+    console.error("GET /api/waitlist:", e);
+    return NextResponse.json({
+      count: 0,
+      dropDate: null,
+      productName: "inter-cative v2",
+    });
+  }
 }
