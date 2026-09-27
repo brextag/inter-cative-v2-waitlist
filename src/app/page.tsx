@@ -26,16 +26,88 @@ function Logo() {
   );
 }
 
+type TimeLeft = {
+  days: number;
+  hours: number;
+  minutes: number;
+  seconds: number;
+  done: boolean;
+};
+
+function getTimeLeft(targetIso: string): TimeLeft {
+  const diff = new Date(targetIso).getTime() - Date.now();
+  if (diff <= 0) {
+    return { days: 0, hours: 0, minutes: 0, seconds: 0, done: true };
+  }
+  const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+  const hours = Math.floor((diff / (1000 * 60 * 60)) % 24);
+  const minutes = Math.floor((diff / (1000 * 60)) % 60);
+  const seconds = Math.floor((diff / 1000) % 60);
+  return { days, hours, minutes, seconds, done: false };
+}
+
+function Countdown({ dropDate }: { dropDate: string }) {
+  const [time, setTime] = useState<TimeLeft>(() => getTimeLeft(dropDate));
+
+  useEffect(() => {
+    setTime(getTimeLeft(dropDate));
+    const id = setInterval(() => setTime(getTimeLeft(dropDate)), 1000);
+    return () => clearInterval(id);
+  }, [dropDate]);
+
+  if (time.done) {
+    return (
+      <div className="mt-8 text-center">
+        <p className="text-sm font-medium text-teal-600">v2 is live — check your inbox or open the product.</p>
+      </div>
+    );
+  }
+
+  const parts = [
+    { label: "Days", value: time.days },
+    { label: "Hours", value: time.hours },
+    { label: "Mins", value: time.minutes },
+    { label: "Secs", value: time.seconds },
+  ];
+
+  return (
+    <div className="mt-8 w-full max-w-md">
+      <p className="text-center text-xs font-medium uppercase tracking-wider text-neutral-400 mb-3">
+        Drops in
+      </p>
+      <div className="grid grid-cols-4 gap-2 sm:gap-3">
+        {parts.map((p) => (
+          <div
+            key={p.label}
+            className="rounded-xl border border-neutral-200 bg-white px-2 py-3 text-center shadow-sm"
+          >
+            <div className="text-2xl sm:text-3xl font-semibold tabular-nums text-neutral-900">
+              {String(p.value).padStart(2, "0")}
+            </div>
+            <div className="mt-0.5 text-[10px] sm:text-xs uppercase tracking-wide text-neutral-400">
+              {p.label}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export default function Home() {
   const [email, setEmail] = useState("");
   const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
   const [message, setMessage] = useState("");
   const [count, setCount] = useState<number | null>(null);
+  const [dropDate, setDropDate] = useState<string | null>(null);
 
   useEffect(() => {
     fetch("/api/waitlist")
       .then((r) => r.json())
-      .then((d) => setCount(d.count))
+      .then((d) => {
+        setCount(d.count);
+        if (d.dropDate) setDropDate(d.dropDate);
+      })
       .catch(() => {});
   }, []);
 
@@ -100,6 +172,9 @@ export default function Home() {
         <p className="mt-6 text-lg text-neutral-500 text-center max-w-xl text-balance">
           inter-cative v2 is coming. Same privacy-first local models, cleaner experience, and new features. Join the waitlist and be first to know when it drops.
         </p>
+
+        {/* Countdown — only when admin set a drop date */}
+        {dropDate && <Countdown dropDate={dropDate} />}
 
         {/* Form */}
         <form

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { addToWaitlist } from "@/lib/db";
+import { addToWaitlist, getWaitlist, getSettings } from "@/lib/db";
 
 const schema = z.object({
   email: z.string().email("Please enter a valid email"),
@@ -25,8 +25,11 @@ export async function POST(req: NextRequest) {
 }
 
 export async function GET() {
-  // Public count only
-  const { getWaitlist } = await import("@/lib/db");
   const list = getWaitlist();
-  return NextResponse.json({ count: list.length });
+  const settings = getSettings();
+  return NextResponse.json({
+    count: list.length,
+    dropDate: settings.dropDate,
+    productName: settings.productName,
+  });
 }
